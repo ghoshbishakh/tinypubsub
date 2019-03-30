@@ -1,6 +1,6 @@
 import pickle
 
-metadata = None
+metadata = {}
 
 def load_metadata_from_file():
     global metadata
