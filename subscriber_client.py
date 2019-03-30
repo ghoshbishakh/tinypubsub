@@ -9,5 +9,38 @@ parser.add_argument('-p', '--port',type=int,help='por of the pubsub service', de
 
 args = parser.parse_args()
 
-publisher_name = args.pub_name
+subscriber_name = args.sub_name
 service_addr = args.server
+service_port = args.port
+service_url = service_addr + ':' + str(service_port)
+
+topic_offsets = {}
+
+def subscribe_to(topic_name):
+    data = {'sub_name':subscriber_name,'topic_name': topic_name}
+    r = requests.post(service_url + '/subscribe',data=data)
+    if r.status_code == 200 :
+        print("POST successful")
+        topic_offsets[topic_name] = 0
+    else :
+        print("HTTP Respone code : " + r.status_code + "  " + r.reason)
+    print(r.text)
+
+def unsubscribe_from(topic_name):
+    data = {'sub_name':subscriber_name,'topic_name': topic_name}
+    r = requests.post(service_url + '/unsubscribe',data=data)
+    if r.status_code == 200 :
+        print("POST successful")
+        del topic_offsets[topic_name]
+    else :
+        print("HTTP Respone code : " + r.status_code + "  " + r.reason)
+    print(r.text)
+
+def read_data(topic_name):
+    r = requests.get(service_url + '/readfrom/' + topic_name + '/' + str(topic_offsets[topic_name]))
+    # read data
+    if r.status_code == 200 :
+        print("POST successful")
+    else :
+        print("HTTP Respone code : " + r.status_code + "  " + r.reason)
+    print(r.text)

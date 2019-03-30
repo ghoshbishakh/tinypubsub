@@ -1,20 +1,22 @@
 import pickle
 
-metadata = {}
+metadata_file_name = 'metadata.pickle'
+metadata = None
 
 def load_metadata_from_file():
     global metadata
-    with open('metadata.pickle', 'r') as f:
-        try:
-            metadata = pickle.load(f)
-        except:
-            print('No metadata file found, initializing metadata..')
-            metadata = {}
-            metadata['topics'] = []
-            metadata['subscriptions'] = {}
-            ff = open('metadata.pickle', 'w')
-            pickle.dump(metadata, ff)
-            ff.close()
+    try:
+        f = open(metadata_file_name, 'r')
+        metadata = pickle.load(f)
+        f.close()
+    except IOError:
+        print('No metadata file found, initializing metadata..')
+        metadata = {}
+        metadata['topics'] = []
+        metadata['subscriptions'] = {}
+        ff = open('metadata.pickle', 'w')
+        pickle.dump(metadata, ff)
+        ff.close()
 
 def load_metadata():
     global metadata
@@ -25,7 +27,7 @@ def load_metadata():
 
 def write_metadata():
     global metadata
-    with open('metadata.pickle', 'w') as f:
+    with open(metadata_file_name, 'w') as f:
         pickle.dump(metadata, f)
 
 def get_topics():
@@ -40,7 +42,7 @@ def get_topics():
     global metadata
     return metadata['topics']
 
-def check_subscription(subsciber_name, topic_name):
+def check_subscription(subscriber_name, topic_name):
     """
     Check if a subscriber is subscribed to a topic 
   
@@ -54,8 +56,8 @@ def check_subscription(subsciber_name, topic_name):
     """
     load_metadata()
     global metadata
-    if subsciber_name in metadata['subscriptions']:
-        if topic_name in metadata['subscriptions']['subsciber_name']:
+    if subscriber_name in metadata['subscriptions']:
+        if topic_name in metadata['subscriptions'][subscriber_name]:
             return True
     return False
 
@@ -92,8 +94,8 @@ def add_subscription(subscriber_name, topic_name):
     load_metadata()
     global metadata
     if subscriber_name not in metadata['subscriptions']:
-        metadata['subscriptions'][subsciber_name] = []
-    if topic_name not in metadata['subscriptions']['subsciber_name']:
-        metadata['subscriptions']['subsciber_name'].append(topic_name)
+        metadata['subscriptions'][subscriber_name] = []
+    if topic_name not in metadata['subscriptions'][subscriber_name]:
+        metadata['subscriptions'][subscriber_name].append(topic_name)
         write_metadata()
-    return metadata['subscriptions']['subsciber_name']
+    return metadata['subscriptions'][subscriber_name]

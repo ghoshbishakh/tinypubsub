@@ -20,9 +20,9 @@ def create_topic(topic_name):
     data = {'pub_name':publisher_name,'topic_name':topic_name}
     r = requests.post(service_url + '/createtopic/', data=data)
     if r.status_code == 200 :
-        print("POST successful")
+        print('POST successful')
     else :
-        print("HTTP Respone code : " + r.status_code + "  " + r.reason)
+        print('HTTP Respone code : ' + r.status_code + '  ' + r.reason)
     print(r.text)
 
 
@@ -30,8 +30,8 @@ def publish_to_topic(topic_name, msgs):
     data = {'pub_name':publisher_name,'payload':'msgs'}
     r = requests.post(service_url + '/publish/' + topic_name, json=data)
     if r.status_code == 200 :
-        print("POST successful")
+        print('POST successful')
     else :
-        print("HTTP Respone code : " + r.status_code + "  " + r.reason)
+        print('HTTP Respone code : ' + r.status_code + '  ' + r.reason)
     print(r.text)
 
