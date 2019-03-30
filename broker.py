@@ -2,9 +2,12 @@ from flask import Flask
 from flask import render_template
 from flask import request
 from flask import redirect, url_for
+import os
 import json
 import metadata_manager
 
+metadata_manager.load_metadata()
+storage_dir = './storage/'
 
 app = Flask(__name__)
 
@@ -21,9 +24,17 @@ def index_view():
 def publish_view(topic):
     # CHECK IF TOPIC EXISTS
     # WRITE TO CORRECT FILE
-    print(topic)
-    print(request.data)
-    return 'Success/Failure'    
+    data = json.loads(request.data)
+
+    if not topic in metadata_manager.get_topics():
+        return 'Topic not found', 404
+
+    with open(storage_dir + topic + '/data.json','rb') as f:
+        old_data = json.load(f)
+        new_data = old_data['payload'] + data['payload']
+    with open(storage_dir + topic + '/data.json','wb') as f:
+        json.dump({'payload':new_data},f)
+    return 'Success'    
 
 
 @app.route('/createtopic', methods=['POST'])
@@ -37,8 +48,13 @@ def createtopic_view():
     topic_list = metadata_manager.get_topics()
     if topic_name in topic_list:
         return 'Topic already exists', 404
-    # CREATE IF FOES NOT EXIST
+    # CREATE IF DOES NOT EXIST
     metadata_manager.add_topic(topic_name)
+    try:
+        os.makedirs(storage_dir + topic_name)
+    except:
+        return 'Topic creation failed', 404
+        # TODO remove topic
     return 'Topic added successfully: ' + topic_name    
 
 

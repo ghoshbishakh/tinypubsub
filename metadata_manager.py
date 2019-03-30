@@ -6,7 +6,7 @@ metadata = None
 def load_metadata_from_file():
     global metadata
     try:
-        f = open(metadata_file_name, 'r')
+        f = open(metadata_file_name, 'rb')
         metadata = pickle.load(f)
         f.close()
     except IOError:
@@ -14,7 +14,7 @@ def load_metadata_from_file():
         metadata = {}
         metadata['topics'] = []
         metadata['subscriptions'] = {}
-        ff = open('metadata.pickle', 'w')
+        ff = open('metadata.pickle', 'wb')
         pickle.dump(metadata, ff)
         ff.close()
 
@@ -27,7 +27,7 @@ def load_metadata():
 
 def write_metadata():
     global metadata
-    with open(metadata_file_name, 'w') as f:
+    with open(metadata_file_name, 'wb') as f:
         pickle.dump(metadata, f)
 
 def get_topics():
