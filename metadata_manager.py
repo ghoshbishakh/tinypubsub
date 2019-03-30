@@ -1,6 +1,6 @@
 import pickle
 
-metadata = None
+metadata = {}
 
 def load_metadata_from_file():
 	with open('metadata.pickle', 'r') as f:
@@ -23,4 +23,6 @@ def get_topics():
 		return metadata['topics']
 
 def check_subscription(subsciber_name, topic_name):
-	# TOPDO
+	if topic_name in metadata['topics'] and subsciber_name in metadata['subscriptions'][topic_name]:
+		return True
+	return False
