@@ -1,5 +1,5 @@
 import unittest
-import metadata_manager
+from broker import metadata_manager
 import os
 import shutil
 

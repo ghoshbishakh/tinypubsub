@@ -4,10 +4,9 @@ from flask import request
 from flask import redirect, url_for
 import os
 import json
-import metadata_manager
+from broker import metadata_manager
 
-metadata_manager.load_metadata()
-storage_dir = './storage/'
+storage_dir = './storage'
 
 app = Flask(__name__)
 
@@ -15,7 +14,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index_view():
-    return "hi"
+    return "This is Tiny PubSub"
 
 
 # Publisher API
@@ -23,12 +22,12 @@ def index_view():
 @app.route('/publish/<topic>', methods=['POST'])
 def publish_view(topic):
     # CHECK IF TOPIC EXISTS
-    # WRITE TO CORRECT FILE
     data = json.loads(request.data)
 
     if not topic in metadata_manager.get_topics():
         return 'Topic not found', 404
 
+    # WRITE TO CORRECT FILE
     with open(storage_dir + topic + '/data.json','rb') as f:
         old_data = json.load(f)
         new_data = old_data['payload'] + data['payload']
@@ -51,11 +50,11 @@ def createtopic_view():
     # CREATE IF DOES NOT EXIST
     metadata_manager.add_topic(topic_name)
     try:
-        os.makedirs(storage_dir + topic_name)
+        os.makedirs(os.path.join(storage_dir,topic_name))
     except:
         return 'Topic creation failed', 404
         # TODO remove topic
-    return 'Topic added successfully: ' + topic_name    
+    return 'Topic added successfully: ' + topic_name
 
 
 # Subscriber Endpoints

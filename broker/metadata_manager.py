@@ -1,7 +1,9 @@
 import pickle
+from threading import Lock
 
 metadata_file_name = 'metadata.pickle'
 metadata = None
+metadata_lock = Lock()
 
 def load_metadata_from_file():
     global metadata
@@ -75,8 +77,10 @@ def add_topic(topic_name):
     load_metadata()
     global metadata
     if topic_name not in metadata['topics']:
+        metadata_lock.acquire()
         metadata['topics'].append(topic_name)
         write_metadata()
+        metadata_lock.release()
     return metadata['topics']
 
 def add_subscription(subscriber_name, topic_name):
@@ -94,8 +98,12 @@ def add_subscription(subscriber_name, topic_name):
     load_metadata()
     global metadata
     if subscriber_name not in metadata['subscriptions']:
+        metadata_lock.acquire()
         metadata['subscriptions'][subscriber_name] = []
+        metadata_lock.release()
     if topic_name not in metadata['subscriptions'][subscriber_name]:
+        metadata_lock.acquire()
         metadata['subscriptions'][subscriber_name].append(topic_name)
         write_metadata()
+        metadata_lock.release()
     return metadata['subscriptions'][subscriber_name]
