@@ -2,3 +2,4 @@ venv
 *.pyc
 *.pickle
 __pycache__
+storage
