@@ -3,7 +3,6 @@ from flask import render_template
 from flask import request
 from flask import redirect, url_for
 import os
-import json
 from broker import metadata_manager
 
 storage_dir = './storage'
