@@ -4,6 +4,8 @@ from flask import request
 from flask import redirect, url_for
 import os
 from broker import metadata_manager
+import json
+import pickle
 
 storage_dir = './storage'
 
@@ -21,18 +23,28 @@ def index_view():
 @app.route('/publish/<topic>', methods=['POST'])
 def publish_view(topic):
     # CHECK IF TOPIC EXISTS
-    data = json.loads(request.data)
-
     if not topic in metadata_manager.get_topics():
         return 'Topic not found', 404
 
-    # WRITE TO CORRECT FILE
-    with open(storage_dir + topic + '/data.json','rb') as f:
-        old_data = json.load(f)
-        new_data = old_data['payload'] + data['payload']
-    with open(storage_dir + topic + '/data.json','wb') as f:
-        json.dump({'payload':new_data},f)
-    return 'Success'    
+    data = json.loads(request.data)
+
+    # Open index and data files
+    index_file = open(os.path.join(storage_dir, topic, 'index.pickle'),'rb+')
+    old_index = pickle.load(index_file)
+    data_file = open(os.path.join(storage_dir, topic, 'data.dat'),'ab')
+    for data_item in data:
+        old_index.append(old_index[-1] + len(data_item))
+        print("appending -->",data_item)
+        data_file.write(data_item.encode())
+
+    # Update index file
+    index_file.seek(0)
+    pickle.dump(old_index, index_file)
+
+    # Close files
+    index_file.close()
+    data_file.close()
+    return 'Success'
 
 
 @app.route('/createtopic', methods=['POST'])
@@ -48,9 +60,13 @@ def createtopic_view():
         return 'Topic already exists', 404
     # CREATE IF DOES NOT EXIST
     metadata_manager.add_topic(topic_name)
+    # CREATE DATA DIRECTORY AND INDEX
     try:
         os.makedirs(os.path.join(storage_dir,topic_name))
+        with open(os.path.join(storage_dir,topic_name, 'index.pickle'), 'wb') as f:
+            pickle.dump([0], f)
     except:
+        raise
         return 'Topic creation failed', 404
         # TODO remove topic
     return 'Topic added successfully: ' + topic_name

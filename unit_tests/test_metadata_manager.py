@@ -18,6 +18,7 @@ class TestTopics(unittest.TestCase):
             os.remove(metadata_manager.metadata_file_name)
         else:
             cls.backup = False
+        metadata_manager.load_metadata_from_file()
 
     def test_add_topic(self):
         t = metadata_manager.add_topic(topic1)
@@ -82,11 +83,8 @@ class TestSubscriptions(unittest.TestCase):
             cls.backup = False
             os.remove(metadata_manager.metadata_file_name+ '.BAK')
         else:
-            try:
-                os.remove(metadata_manager.metadata_file_name)
-            except:
-                pass
-
+            print('Removing metadata file...')
+            os.remove(metadata_manager.metadata_file_name)
 
     # def get_topic(self):
     #     self.assertEqual('foo'.upper(), 'FOO')
