@@ -36,14 +36,14 @@ def publish_to_topic(topic_name, msgs):
     print('Response from server : ' + r.text)
 
 def main():
-    # create_topic('Apache')
+    create_topic('Apache')
     msgs = StringGenerator('[\\w\\p\\d]{20}').render_list(10,unique=True)
     publish_to_topic('Apache',msgs)
     msgs = StringGenerator('[\\w\\p\\d]{20}').render_list(10,unique=True)
     publish_to_topic('Apache',msgs)
     # print(msgs)
-    # msgs = StringGenerator('[\\w\\p\\d]{20}').render_list(1000,unique=True)
-    # publish_to_topic('Apache',msgs)
+    msgs = StringGenerator('[\\w\\p\\d]{20}').render_list(10,unique=True)
+    publish_to_topic('Apache',msgs)
 
 
 main()
