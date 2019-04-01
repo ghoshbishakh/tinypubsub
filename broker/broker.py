@@ -34,7 +34,7 @@ def publish(topic, data):
     data_file.close()
 
 
-def read(topic, offset):
+def read(topic, offset, readall=False):
     # Open index and data files
     index_file = open(os.path.join(storage_dir, topic, 'index.pickle'),'rb')
     old_index = pickle.load(index_file)
@@ -42,17 +42,29 @@ def read(topic, offset):
     if offset >= len(old_index):
         return None
 
-    data_offset = old_index[offset-1]
-    data_end_offset = old_index[offset]
-    data_size = data_end_offset - data_offset
-    print(data_offset, data_end_offset, data_size)
-    # Seek data file
-    data_file.seek(data_offset)
-    data = data_file.read(data_size)
-    # Close files
-    index_file.close()
-    data_file.close()
-    return data
+    if readall:
+        data_list = []
+        data_offset = old_index[offset-1]
+        data_file.seek(data_offset)
+        for next_data_offset in old_index[offset:]:
+            data_size = next_data_offset - data_offset
+            data_list.append(data_file.read(data_size).decode())
+            data_offset = next_data_offset
+        return data_list
+
+    else:
+        data_offset = old_index[offset-1]
+        data_end_offset = old_index[offset]
+        data_size = data_end_offset - data_offset
+        # print(data_offset, data_end_offset, data_size)
+
+        # Seek data file
+        data_file.seek(data_offset)
+        data = data_file.read(data_size)
+        # Close files
+        index_file.close()
+        data_file.close()
+        return data
 
 
 @app.route('/')
@@ -135,6 +147,43 @@ def read_view(topic, offset):
         return data, 200
     else:
         return 'Offset invalid', 404    
+
+
+@app.route('/readallfrom/<topic>/<offset>', methods=['GET'])
+def read_all_view(topic, offset):
+    """
+    Get message from topic with an offset 
+    Parameters:
+    topic (str): Name of topic
+    offset (int): Offset of message starting from 1
+
+    Returns: 
+    List: List of topics 
+  
+    """
+
+    if 'sub_name' not in request.args:
+        return 'Invalid request', 404
+    try:
+        offset = int(offset)
+    except:
+        return 'Invalid request', 404
+    subscriber_name = request.args['sub_name']
+    # CHECK IF TOPIC EXISTS
+    topic_list = metadata_manager.get_topics()
+    if topic not in topic_list:
+        return 'Topic does not exist', 404
+    
+    # CHECK IF SUBSCRIBER SUBSCRIBED
+    if not metadata_manager.check_subscription(subscriber_name, topic):
+        return 'Subscriber not subscribed to topic', 404
+
+    # READ
+    data_list = read(topic, offset, True)
+    if data_list:
+        return json.dumps(data_list), 200
+    else:
+        return 'Offset invalid', 404
 
 
 @app.route('/subscribe', methods=['POST'])

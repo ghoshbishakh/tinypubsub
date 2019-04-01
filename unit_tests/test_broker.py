@@ -133,7 +133,7 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(res.data.decode(), "Successfully subscribed")
 
         # Publish
-        published_data1 = ['123', '12345', '1234567']
+        published_data1 = ['leclerc', 'hamilton', 'button']
         data = json.dumps(published_data1)
         res = self.client.post('/publish/' + topic5, data=data)
         # print(res.data)
@@ -160,17 +160,32 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data.decode(), published_data1[1])
 
+
         # Publish
-        published_data2 = ['1234', '12345', '1234567']
-        data = json.dumps(published_data1)
+        published_data2 = ['vettel', 'alonso', 'massa']
+        data = json.dumps(published_data2)
         res = self.client.post('/publish/' + topic5, data=data)
         # print(res.data)
         self.assertEqual(res.status_code, 200)
+
+
+        # Read
+        data = {'sub_name':subscriber1}
+        res = self.client.get('/readfrom/%s/%s'%(topic5, '3'), query_string=data)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data.decode(), published_data1[2])
 
         data = {'sub_name':subscriber1}
         res = self.client.get('/readfrom/%s/%s'%(topic5, '5'), query_string=data)
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data.decode(), published_data2[1])
+
+        # Readall
+        data = {'sub_name':subscriber1}
+        res = self.client.get('/readallfrom/%s/%s'%(topic5, '2'), query_string=data)
+        self.assertEqual(res.status_code, 200)
+        self.assertListEqual(json.loads(res.data.decode()), published_data1[1:] + published_data2)
+
 
     @classmethod
     def tearDownClass(cls):
