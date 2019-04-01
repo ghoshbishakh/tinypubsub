@@ -75,18 +75,43 @@ def createtopic_view():
 # Subscriber Endpoints
 
 @app.route('/readfrom/<topic>/<offset>', methods=['GET'])
-def read_view(topic):
+def read_view(topic, offset):
+    if 'sub_name' not in request.args:
+        return 'Invalid request', 404
+    subscriber_name = request.args['sub_name']
     # CHECK IF TOPIC EXISTS
-    # READ SUBSCRIBER IF FROM request
+    topic_list = metadata_manager.get_topics()
+    if topic not in topic_list:
+        return 'Topic does not exist', 404
+    
     # CHECK IF SUBSCRIBER SUBSCRIBED
+    if not metadata_manager.check_subscription(subscriber_name, topic):
+        return 'Subscriber not subscribed to topic', 404
+
+    # READ
     return 'Success/Failure with payload'    
 
 
-@app.route('/subscribe/<topic>', methods=['POST'])
-def subscribe_view(topic):
+@app.route('/subscribe', methods=['POST'])
+def subscribe_view():
+    # Check POST data
+    try:
+        data = json.loads(request.data)
+        subscriber_name = data['sub_name']
+        topic_name = data['topic_name']
+    except:
+        return 'Invalid POST data', 404
+    
     # CHECK IF TOPIC EXISTS
+    topic_list = metadata_manager.get_topics()
+    if topic_name not in topic_list:
+        return 'Topic does not exist', 404
     # SUBSCRIBE
-    return 'Success/Failure'    
+    if metadata_manager.check_subscription(subscriber_name, topic_name):
+        return 'Already subscribed', 200
+    else:
+        subs = metadata_manager.add_subscription(subscriber_name, topic_name)
+    return 'Successfully subscribed', 200    
 
 
 @app.route('/unsubscribe/<topic>', methods=['GET'])

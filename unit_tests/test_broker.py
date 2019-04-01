@@ -11,6 +11,9 @@ subscriber2 = 'test_subuscriber_2'
 topic1 = 'test_topic_1'
 topic2 = 'test_topic_2'
 topic3 = 'test_topic_3'
+topic4 = 'test_topic_4'
+topic5 = 'test_topic_5'
+topic_invalid = 'test_topic_invalid'
 
 class TestAPI(unittest.TestCase):
     @classmethod
@@ -32,6 +35,7 @@ class TestAPI(unittest.TestCase):
     def test_basic_request(self):
         res = self.client.get('/')
         self.assertEqual(res.status_code, 200)
+
 
     def test_createtopic_view(self):
         # Create topic
@@ -66,6 +70,15 @@ class TestAPI(unittest.TestCase):
         res = self.client.post('/createtopic', data=data)
         # print(res.data)
         self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data.decode(), 'Topic added successfully: ' + topic3)
+        
+        # Publish to topic
+        data = ['123', '12345', '1234567']
+        data = json.dumps(data)
+        res = self.client.post('/publish/' + topic_invalid, data=data)
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual(res.data.decode(), 'Topic not found')
+
 
         data = ['123', '12345', '1234567']
         data = json.dumps(data)
@@ -73,6 +86,74 @@ class TestAPI(unittest.TestCase):
         # print(res.data)
         self.assertEqual(res.status_code, 200)
 
+
+    def test_subscribe_view(self):
+        # Create topic
+        data = {'pub_name':subscriber1, 'topic_name':topic4}
+        data = json.dumps(data)
+        res = self.client.post('/createtopic', data=data)
+        # print(res.data)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data.decode(), 'Topic added successfully: ' + topic4)
+
+        # Subscribe
+        data = {'sub_name':subscriber1, 'topic_name': topic4}
+        data = json.dumps(data)
+        res = self.client.post('/subscribe', data=data)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data.decode(), "Successfully subscribed")
+
+        data = {'sub_name':subscriber1, 'topic_name': topic4}
+        data = json.dumps(data)
+        res = self.client.post('/subscribe', data=data)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data.decode(), "Already subscribed")
+
+        data = {'sub_name':subscriber1, 'topic_name': topic_invalid}
+        data = json.dumps(data)
+        res = self.client.post('/subscribe', data=data)
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual(res.data.decode(), "Topic does not exist")
+
+
+    def test_read_view(self):
+        # Create topic
+        data = {'pub_name':subscriber1, 'topic_name':topic5}
+        data = json.dumps(data)
+        res = self.client.post('/createtopic', data=data)
+        # print(res.data)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data.decode(), 'Topic added successfully: ' + topic5)
+
+        # Subscribe
+        data = {'sub_name':subscriber1, 'topic_name': topic5}
+        data = json.dumps(data)
+        res = self.client.post('/subscribe', data=data)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data.decode(), "Successfully subscribed")
+
+        # Publish
+        data = ['123', '12345', '1234567']
+        data = json.dumps(data)
+        res = self.client.post('/publish/' + topic5, data=data)
+        # print(res.data)
+        self.assertEqual(res.status_code, 200)
+
+        # Read
+        data = {'sub_name':subscriber1}
+        res = self.client.get('/readfrom/%s/%s'%(topic_invalid, '1'), query_string=data)
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual(res.data.decode(), "Topic does not exist")
+
+        data = {'sub_name':subscriber2}
+        res = self.client.get('/readfrom/%s/%s'%(topic1, '1'), query_string=data)
+        self.assertEqual(res.status_code, 404)
+        self.assertEqual(res.data.decode(), "Subscriber not subscribed to topic")
+
+        data = {'sub_name':subscriber1}
+        res = self.client.get('/readfrom/%s/%s'%(topic5, '1'), query_string=data)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data.decode(), "Subscriber not subscribed to topic")
 
     @classmethod
     def tearDownClass(cls):
