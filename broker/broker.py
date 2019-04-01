@@ -13,21 +13,9 @@ app = Flask(__name__)
 
 
 
-@app.route('/')
-def index_view():
-    return "This is Tiny PubSub"
+# Utility functions
 
-
-# Publisher API
-
-@app.route('/publish/<topic>', methods=['POST'])
-def publish_view(topic):
-    # CHECK IF TOPIC EXISTS
-    if not topic in metadata_manager.get_topics():
-        return 'Topic not found', 404
-
-    data = json.loads(request.data)
-
+def publish(topic, data):
     # Open index and data files
     index_file = open(os.path.join(storage_dir, topic, 'index.pickle'),'rb+')
     old_index = pickle.load(index_file)
@@ -44,6 +32,44 @@ def publish_view(topic):
     # Close files
     index_file.close()
     data_file.close()
+
+
+def read(topic, offset):
+    # Open index and data files
+    index_file = open(os.path.join(storage_dir, topic, 'index.pickle'),'rb')
+    old_index = pickle.load(index_file)
+    data_file = open(os.path.join(storage_dir, topic, 'data.dat'),'rb')
+    if offset >= len(old_index):
+        return None
+
+    data_offset = old_index[offset-1]
+    data_end_offset = old_index[offset]
+    data_size = data_end_offset - data_offset
+    print(data_offset, data_end_offset, data_size)
+    # Seek data file
+    data_file.seek(data_offset)
+    data = data_file.read(data_size)
+    # Close files
+    index_file.close()
+    data_file.close()
+    return data
+
+
+@app.route('/')
+def index_view():
+    return "This is Tiny PubSub"
+
+
+# Publisher API
+
+@app.route('/publish/<topic>', methods=['POST'])
+def publish_view(topic):
+    # CHECK IF TOPIC EXISTS
+    if not topic in metadata_manager.get_topics():
+        return 'Topic not found', 404
+
+    data = json.loads(request.data)
+    publish(topic, data)
     return 'Success'
 
 
@@ -76,7 +102,22 @@ def createtopic_view():
 
 @app.route('/readfrom/<topic>/<offset>', methods=['GET'])
 def read_view(topic, offset):
+    """
+    Get message from topic with an offset 
+    Parameters:
+    topic (str): Name of topic
+    offset (int): Offset of message starting from 1
+
+    Returns: 
+    List: List of topics 
+  
+    """
+
     if 'sub_name' not in request.args:
+        return 'Invalid request', 404
+    try:
+        offset = int(offset)
+    except:
         return 'Invalid request', 404
     subscriber_name = request.args['sub_name']
     # CHECK IF TOPIC EXISTS
@@ -89,7 +130,11 @@ def read_view(topic, offset):
         return 'Subscriber not subscribed to topic', 404
 
     # READ
-    return 'Success/Failure with payload'    
+    data = read(topic, offset)
+    if data:
+        return data, 200
+    else:
+        return 'Offset invalid', 404    
 
 
 @app.route('/subscribe', methods=['POST'])

@@ -133,8 +133,8 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(res.data.decode(), "Successfully subscribed")
 
         # Publish
-        data = ['123', '12345', '1234567']
-        data = json.dumps(data)
+        published_data1 = ['123', '12345', '1234567']
+        data = json.dumps(published_data1)
         res = self.client.post('/publish/' + topic5, data=data)
         # print(res.data)
         self.assertEqual(res.status_code, 200)
@@ -153,7 +153,24 @@ class TestAPI(unittest.TestCase):
         data = {'sub_name':subscriber1}
         res = self.client.get('/readfrom/%s/%s'%(topic5, '1'), query_string=data)
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.data.decode(), "Subscriber not subscribed to topic")
+        self.assertEqual(res.data.decode(), published_data1[0])
+
+        data = {'sub_name':subscriber1}
+        res = self.client.get('/readfrom/%s/%s'%(topic5, '2'), query_string=data)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data.decode(), published_data1[1])
+
+        # Publish
+        published_data2 = ['1234', '12345', '1234567']
+        data = json.dumps(published_data1)
+        res = self.client.post('/publish/' + topic5, data=data)
+        # print(res.data)
+        self.assertEqual(res.status_code, 200)
+
+        data = {'sub_name':subscriber1}
+        res = self.client.get('/readfrom/%s/%s'%(topic5, '5'), query_string=data)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data.decode(), published_data2[1])
 
     @classmethod
     def tearDownClass(cls):
