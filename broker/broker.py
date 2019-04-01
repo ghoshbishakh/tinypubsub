@@ -6,16 +6,19 @@ import os
 from broker import metadata_manager
 import json
 import pickle
+from threading import Lock
 
 storage_dir = './storage'
 
 app = Flask(__name__)
 
+publish_lock = Lock()
 
 
 # Utility functions
 
 def publish(topic, data):
+    publish_lock.acquire()
     # Open index and data files
     index_file = open(os.path.join(storage_dir, topic, 'index.pickle'),'rb+')
     old_index = pickle.load(index_file)
@@ -32,6 +35,7 @@ def publish(topic, data):
     # Close files
     index_file.close()
     data_file.close()
+    publish_lock.release()
 
 
 def read(topic, offset, readall=False):
@@ -121,7 +125,7 @@ def read_view(topic, offset):
     offset (int): Offset of message starting from 1
 
     Returns: 
-    List: List of topics 
+    str: message 
   
     """
 
@@ -152,13 +156,13 @@ def read_view(topic, offset):
 @app.route('/readallfrom/<topic>/<offset>', methods=['GET'])
 def read_all_view(topic, offset):
     """
-    Get message from topic with an offset 
+    Get list of all messages from topic with an offset 
     Parameters:
     topic (str): Name of topic
     offset (int): Offset of message starting from 1
 
     Returns: 
-    List: List of topics 
+    List: List of messages
   
     """
 
