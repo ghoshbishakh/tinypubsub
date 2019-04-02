@@ -182,12 +182,15 @@ def read_all_view(topic, offset):
     if not metadata_manager.check_subscription(subscriber_name, topic):
         return 'Subscriber not subscribed to topic', 404
 
+    if offset <= 0:
+        return 'Offset invalid', 404
+
     # READ
     data_list = read(topic, offset, True)
     if data_list:
         return json.dumps(data_list), 200
     else:
-        return 'Offset invalid', 404
+        return 'Subscriber upto date', 404
 
 
 @app.route('/subscribe', methods=['POST'])
