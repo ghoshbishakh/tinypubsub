@@ -1,6 +1,6 @@
 import requests
 import argparse
-
+import time,json
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-id','--sub_name',type= str, help='Name of the subsciber', required=True)
@@ -37,7 +37,7 @@ def unsubscribe_from(topic_name):
     print('Response from server : ' + r.text)
 
 def read_data(topic_name):
-    print(service_url + '/readfrom/' + topic_name + '/' + str(topic_offsets[topic_name]))
+    # print(service_url + '/readfrom/' + topic_name + '/' + str(topic_offsets[topic_name]))
     r = requests.get(service_url + '/readfrom/' + topic_name + '/' + str(topic_offsets[topic_name]),params = {'sub_name':subscriber_name})
     # read data
     if r.status_code == 200 :
@@ -47,9 +47,30 @@ def read_data(topic_name):
         print("HTTP Response code : " + str(r.status_code) + "  " + r.reason)
     print('Response from server : ' + r.text)
 
+def read_all(topic_name):
+    r = requests.get(service_url + '/readallfrom/' + topic_name + '/' + str(topic_offsets[topic_name]),params = {'sub_name':subscriber_name})
+    if r.status_code == 200 :
+        print("READ successful")
+        data_list = json.loads(r.text)
+        # print(data_list)
+        topic_offsets[topic_name] += len(data_list)
+    else :
+        print("HTTP Response code : " + str(r.status_code) + "  " + r.reason)
+    print('Response from server : ' + r.text)
+
+def perioidic_pull(topic_name,time_interval):
+    try:
+        while True:
+            read_all(topic_name)
+            time.sleep(time_interval)
+    except KeyboardInterrupt:
+        print('')
+
 def main():
     subscribe_to('Apache')
-    for _ in range(1,10):
-        read_data('Apache')
+    # for _ in range(1,10):
+    #     read_data('Apache')
+    perioidic_pull('Apache',3)
+    print("hello, I am back")
 
 main()
