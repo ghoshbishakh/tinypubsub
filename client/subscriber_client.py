@@ -6,6 +6,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-id','--sub_name',type= str, help='Name of the subsciber', required=True)
 parser.add_argument('-s', '--server',type=str,help='IP address of the pubsub service', default='127.0.0.1')
 parser.add_argument('-p', '--port',type=int,help='por of the pubsub service', default='9999')
+parser.add_argument('-t', '--topic',type=str,help='name of topic to subscribe and pull', required=True)
 
 args = parser.parse_args()
 
@@ -15,6 +16,7 @@ service_port = args.port
 service_url = 'http://' + service_addr + ':' + str(service_port)
 
 topic_offsets = {}
+topic = args.topic
 
 def subscribe_to(topic_name):
     data = {'sub_name':subscriber_name,'topic_name': topic_name}
@@ -67,10 +69,10 @@ def perioidic_pull(topic_name,time_interval):
         print('')
 
 def main():
-    subscribe_to('Apache')
+    subscribe_to(topic)
     # for _ in range(1,10):
     #     read_data('Apache')
-    perioidic_pull('Apache',3)
+    perioidic_pull(topic,3)
     print("hello, I am back")
 
 main()

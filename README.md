@@ -19,7 +19,7 @@
 ### Running publisher and subscribers
 Publisher:
 ```
-python client/publisher_client.py [-h] -id PUB_NAME [-s SERVER] [-p PORT]
+python client/publisher_client_random.py [-h] -id PUB_NAME [-s SERVER] [-p PORT]
 ```
 Subscriber:
 ```

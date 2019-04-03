@@ -24,9 +24,10 @@ def publish(topic, data):
     old_index = pickle.load(index_file)
     data_file = open(os.path.join(storage_dir, topic, 'data.dat'),'ab')
     for data_item in data:
+        data_item = data_item.encode()
         old_index.append(old_index[-1] + len(data_item))
         print("appending -->",data_item)
-        data_file.write(data_item.encode())
+        data_file.write(data_item)
 
     # Update index file
     index_file.seek(0)
@@ -52,7 +53,9 @@ def read(topic, offset, readall=False):
         data_file.seek(data_offset)
         for next_data_offset in old_index[offset:]:
             data_size = next_data_offset - data_offset
-            data_list.append(data_file.read(data_size).decode())
+            data = data_file.read(data_size)
+            print(data)
+            data_list.append(data.decode('utf-8'))
             data_offset = next_data_offset
         return data_list
 
