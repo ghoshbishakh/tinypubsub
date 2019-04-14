@@ -8,6 +8,7 @@ import json
 import pickle
 import requests
 from threading import Lock
+import time
 
 storage_dir = './storage'
 
@@ -269,3 +270,25 @@ def unsubscribe_view(topic):
     # UNSUBSCRIBE
     return 'Success/Failure'    
 
+
+@app.route('/heartbeat', methods=['POST'])
+def heartbeat_view():
+    return 'Success', 200
+
+def heartbeat_exchange(replica):
+    failed_tries = 0
+    while True:
+        try:
+            r = requests.post(replica + '/heartbeat')
+        except:
+            failed_tries += 1
+            if failed_tries == 3:
+                print('Replica at ' + replica + ' is down!!')
+                # MIGHT NEED A LOCK
+                replicas.remove(replica)
+                return
+            continue
+        if r.status_code == 200:
+            failed_tries = 0
+        time.sleep(3)
+    return 
