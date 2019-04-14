@@ -6,6 +6,7 @@ import os
 from broker import metadata_manager
 import json
 import pickle
+import requests
 from threading import Lock
 
 storage_dir = './storage'
@@ -14,6 +15,7 @@ app = Flask(__name__)
 
 publish_lock = Lock()
 
+replicas = ['http://10.5.18.101:9999'] 
 
 # Utility functions
 
@@ -89,7 +91,22 @@ def publish_view(topic):
 
     data = json.loads(request.data)
     publish(topic, data)
+
+    for replica in replicas:
+        r = requests.post(replica + '/publish_repl/' + topic,data=request.data)
+        if r.status_code == 200 :
+            print('Publish successful to replica : ' + replica)
     return 'Success'
+
+@app.route('/publish_repl/<topic>', methods=['POST'])
+def publish_view_replica(topic):
+    if not topic in metadata_manager.get_topics():
+        return 'Topic not found', 404
+
+    data = json.loads(request.data)
+    publish(topic, data)
+    return 'Success'
+
 
 
 @app.route('/createtopic', methods=['POST'])
@@ -114,8 +131,36 @@ def createtopic_view():
         raise
         return 'Topic creation failed', 404
         # TODO remove topic
+    for replica in replicas:
+        r = requests.post(replica + '/createtopic_repl' ,data=request.data)
+        if r.status_code == 200 :
+            print('Topic added successfully to replica : ' + replica)
     return 'Topic added successfully: ' + topic_name
 
+
+@app.route('/createtopic_repl', methods=['POST'])
+def createtopic_view_replica():
+    try:
+        data = json.loads(request.data)
+        publisher_name = data['pub_name']
+        topic_name = data['topic_name']
+    except:
+        return 'Invalid POST data', 404
+    topic_list = metadata_manager.get_topics()
+    if topic_name in topic_list:
+        return 'Topic already exists', 404
+    # CREATE IF DOES NOT EXIST
+    metadata_manager.add_topic(topic_name)
+    # CREATE DATA DIRECTORY AND INDEX
+    try:
+        os.makedirs(os.path.join(storage_dir,topic_name))
+        with open(os.path.join(storage_dir,topic_name, 'index.pickle'), 'wb') as f:
+            pickle.dump([0], f)
+    except:
+        raise
+        return 'Topic creation failed', 404
+        # TODO remove topic
+    return 'Topic added successfully: ' + topic_name
 
 # Subscriber Endpoints
 
