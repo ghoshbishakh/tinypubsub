@@ -19,7 +19,13 @@ service_url = 'http://' + service_addr + ':' + str(service_port)
 
 def create_topic(topic_name):
     data = {'pub_name':publisher_name,'topic_name':topic_name}
-    r = requests.post(service_url + '/createtopic', json=data)
+    
+    try:
+        r = requests.post(service_url + '/createtopic', json=data)
+    except:
+        print("Broker unavailable!!")
+        return
+
     if r.status_code == 200 :
         print('Topic successfully created')
     else :
@@ -28,11 +34,16 @@ def create_topic(topic_name):
 
 
 def publish_to_topic(topic_name, msgs):
-    r = requests.post(service_url + '/publish/' + topic_name, json=msgs)
+    try:
+        r = requests.post(service_url + '/publish/' + topic_name, json=msgs)
+    except:
+        print("Broker unavailable!!")
+        return
+
     if r.status_code == 200 :
         print('Publish successful')
     else :
-        print('HTTP Respone code : ' + str(r.status_code) + '  ' + r.reason)
+        print('HTTP Response code : ' + str(r.status_code) + '  ' + r.reason)
     print('Response from server : ' + r.text)
 
 def main():
