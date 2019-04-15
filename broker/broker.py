@@ -14,6 +14,8 @@ storage_dir = './storage'
 
 app = Flask(__name__)
 
+MAXTRIES = 3
+
 publish_lock = {}
 
 replicas = ['http://10.5.18.101:9999'] 
@@ -82,7 +84,7 @@ def index_view():
     return "This is Tiny PubSub"
 
 
-# Publisher API
+# Publisher Endpoints  =================================================================================
 
 @app.route('/publish/<topic>', methods=['POST'])
 def publish_view(topic):
@@ -95,9 +97,20 @@ def publish_view(topic):
     publish(topic, data)
 
     for replica in replicas:
-        r = requests.post(replica + '/publish_repl/' + topic,data=request.data)
-        if r.status_code == 200 :
-            print('Publish successful to replica : ' + replica)
+        tries = 0
+        while tries < MAXTRIES:
+            try:
+                r = requests.post(replica + '/publish_repl/' + topic, data=request.data, timeout=1)
+                if r.status_code == 200 :
+                    print('Publish successful to replica : ' + replica)
+                    break
+            except:
+                print("Timeout replica: %s try number: %s"%(replica, tries))
+                tries += 1
+        if tries == MAXTRIES:
+            print('Replica at ' + replica + ' is down!!')
+            replicas.remove(replica)
+
     publish_lock[topic].release()
     return 'Success'
 
@@ -138,9 +151,20 @@ def createtopic_view():
         return 'Topic creation failed', 404
         # TODO remove topic
     for replica in replicas:
-        r = requests.post(replica + '/createtopic_repl' ,data=request.data)
-        if r.status_code == 200 :
-            print('Topic added successfully to replica : ' + replica)
+        tries = 0
+        while tries < MAXTRIES:
+            try:
+                r = requests.post(replica + '/createtopic_repl' ,data=request.data, timeout=1)
+                if r.status_code == 200 :
+                    print('Topic added successfully to replica : ' + replica)
+                    break
+            except:
+                print("Timeout replica: %s try number: %s"%(replica, tries))
+                tries += 1
+        if tries == MAXTRIES:
+            print('Replica at ' + replica + ' is down!!')
+            replicas.remove(replica)
+
     publish_lock[topic_name] = Lock()
     return 'Topic added successfully: ' + topic_name
 
@@ -169,7 +193,7 @@ def createtopic_view_replica():
         # TODO remove topic
     return 'Topic added successfully: ' + topic_name
 
-# Subscriber Endpoints
+# Subscriber Endpoints ========================================================================
 
 @app.route('/readfrom/<topic>/<offset>', methods=['GET'])
 def read_view(topic, offset):
@@ -276,6 +300,7 @@ def unsubscribe_view(topic):
     # UNSUBSCRIBE
     return 'Success/Failure'    
 
+# Replication routines ====================================================================
 
 @app.route('/heartbeat', methods=['POST'])
 def heartbeat_view():
