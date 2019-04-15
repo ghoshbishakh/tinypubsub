@@ -291,7 +291,45 @@ def subscribe_view():
         return 'Already subscribed', 200
     else:
         subs = metadata_manager.add_subscription(subscriber_name, topic_name)
+
+    for replica in replicas:
+        tries = 0
+        while tries < MAXTRIES:
+            try:
+                r = requests.post(replica + '/subscribe_repl' ,data=request.data, timeout=1)
+                if r.status_code == 200 :
+                    print('Subscription added successfully to replica : ' + replica)
+                    break
+            except:
+                print("Timeout replica: %s try number: %s"%(replica, tries))
+                tries += 1
+        if tries == MAXTRIES:
+            print('Replica at ' + replica + ' is down!!')
+            replicas.remove(replica)
+
     return 'Successfully subscribed', 200    
+
+
+@app.route('/subscribe_repl', methods=['POST'])
+def subscribe_view_replica():
+    # Check POST data
+    try:
+        data = json.loads(request.data)
+        subscriber_name = data['sub_name']
+        topic_name = data['topic_name']
+    except:
+        return 'Invalid POST data', 404
+
+    # CHECK IF TOPIC EXISTS
+    topic_list = metadata_manager.get_topics()
+    if topic_name not in topic_list:
+        return 'Topic does not exist', 404
+    # SUBSCRIBE
+    if metadata_manager.check_subscription(subscriber_name, topic_name):
+        return 'Already subscribed', 200
+    else:
+        subs = metadata_manager.add_subscription(subscriber_name, topic_name)
+    return 'Successfully subscribed', 200
 
 
 @app.route('/unsubscribe/<topic>', methods=['GET'])
