@@ -35,6 +35,7 @@ app = Flask(__name__)
 MAXTRIES = 3
 
 publish_lock = {}
+replicas_lock = Lock()
 
 # Load locks
 topic_list = metadata_manager.get_topics()
@@ -131,7 +132,9 @@ def publish_view(topic):
                 tries += 1
         if tries == MAXTRIES:
             print('Replica at ' + replica + ' is down!!')
+            replicas_lock.acquire()
             replicas.remove(replica)
+            replicas_lock.release()
 
     publish_lock[topic].release()
     return 'Success'
@@ -185,7 +188,9 @@ def createtopic_view():
                 tries += 1
         if tries == MAXTRIES:
             print('Replica at ' + replica + ' is down!!')
+            replicas_lock.acquire()
             replicas.remove(replica)
+            replicas_lock.release()
 
     publish_lock[topic_name] = Lock()
     return 'Topic added successfully: ' + topic_name
@@ -327,8 +332,9 @@ def subscribe_view():
                 tries += 1
         if tries == MAXTRIES:
             print('Replica at ' + replica + ' is down!!')
+            replicas_lock.acquire()
             replicas.remove(replica)
-
+            replicas_lock.release()
     return 'Successfully subscribed', 200    
 
 
@@ -362,18 +368,28 @@ def unsubscribe_view(topic):
 
 # Replication routines ====================================================================
 
-@app.route('/heartbeat', methods=['GET'])
+@app.route('/heartbeat', methods=['POST'])
 def heartbeat_view():
+    try:
+        data = json.loads(request.data)
+        subscriber_name = data['address']
+    except:
+        return 'Invalid POST data', 404
+    if subscriber_name not in replicas:
+        replicas_lock.acquire()
+        replicas.append(subscriber_name)
+        replicas_lock.release()
     return 'Success', 200
 
 def heartbeat_exchange():
     print("Checking heartbeat..")
+    data = {'address':my_address}
     for replica in replicas:
         print("Checking heartbeat for %s"%(replica,))
         tries = 0
         while tries < MAXTRIES:
             try:
-                r = requests.get(replica + '/heartbeat', timeout=1)
+                r = requests.post(replica + '/heartbeat',json=data, timeout=3)
                 if r.status_code == 200:
                     break
             except:
@@ -383,7 +399,9 @@ def heartbeat_exchange():
         if tries == MAXTRIES:
             print('Replica at ' + replica + ' is down!!')
             # MIGHT NEED A LOCK
+            replicas_lock.acquire()
             replicas.remove(replica)
+            replicas_lock.release()
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=heartbeat_exchange, trigger="interval", seconds=3)
