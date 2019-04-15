@@ -11,6 +11,15 @@ from threading import Lock
 import time
 from apscheduler.schedulers.background import BackgroundScheduler
 
+from .config import replicas
+from .config import my_address
+
+replicas.remove(my_address)
+
+if len(replicas):
+    primary_replica = max(replicas)
+else:
+    primary_replica = my_address
 
 storage_dir = './storage'
 
@@ -20,10 +29,9 @@ MAXTRIES = 3
 
 publish_lock = {}
 
-replicas = ['http://10.5.18.101:9999'] 
-
 
 # Utility functions
+
 
 def publish(topic, data):
     # publish_lock[topic].acquire()
@@ -343,7 +351,7 @@ def unsubscribe_view(topic):
 
 # Replication routines ====================================================================
 
-@app.route('/heartbeat', methods=['POST'])
+@app.route('/heartbeat', methods=['GET'])
 def heartbeat_view():
     return 'Success', 200
 
@@ -354,10 +362,11 @@ def heartbeat_exchange():
         tries = 0
         while tries < MAXTRIES:
             try:
-                r = requests.post(replica + '/heartbeat', timeout=1)
+                r = requests.get(replica + '/heartbeat', timeout=1)
                 if r.status_code == 200:
                     break
             except:
+                print("heartbeat timeout: %s"%(replica,))
                 tries += 1
         
         if tries == MAXTRIES:
