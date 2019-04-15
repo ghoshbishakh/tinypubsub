@@ -9,6 +9,8 @@ import pickle
 import requests
 from threading import Lock
 import time
+from apscheduler.schedulers.background import BackgroundScheduler
+
 
 storage_dir = './storage'
 
@@ -19,6 +21,7 @@ MAXTRIES = 3
 publish_lock = {}
 
 replicas = ['http://10.5.18.101:9999'] 
+
 
 # Utility functions
 
@@ -344,20 +347,24 @@ def unsubscribe_view(topic):
 def heartbeat_view():
     return 'Success', 200
 
-def heartbeat_exchange(replica):
-    failed_tries = 0
-    while True:
-        try:
-            r = requests.post(replica + '/heartbeat')
-        except:
-            failed_tries += 1
-            if failed_tries == 3:
-                print('Replica at ' + replica + ' is down!!')
-                # MIGHT NEED A LOCK
-                replicas.remove(replica)
-                return
-            continue
-        if r.status_code == 200:
-            failed_tries = 0
-        time.sleep(3)
-    return 
+def heartbeat_exchange():
+    print("Checking heartbeat..")
+    for replica in replicas:
+        print("Checking heartbeat for %s"%(replica,))
+        tries = 0
+        while tries < MAXTRIES:
+            try:
+                r = requests.post(replica + '/heartbeat', timeout=1)
+                if r.status_code == 200:
+                    break
+            except:
+                tries += 1
+        
+        if tries == MAXTRIES:
+            print('Replica at ' + replica + ' is down!!')
+            # MIGHT NEED A LOCK
+            replicas.remove(replica)
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=heartbeat_exchange, trigger="interval", seconds=3)
+scheduler.start()
