@@ -384,6 +384,11 @@ def heartbeat_exchange():
             print('Replica at ' + replica + ' is down!!')
             # MIGHT NEED A LOCK
             replicas.remove(replica)
+            if len(replicas):
+                primary_replica = max(replicas)
+            else:
+                primary_replica = my_address
+
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=heartbeat_exchange, trigger="interval", seconds=3)
