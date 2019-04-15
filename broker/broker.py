@@ -21,6 +21,13 @@ if len(replicas):
 else:
     primary_replica = my_address
 
+print("""========== TINY PUBSUB ===========
+ADDRESS: %s
+REPLICAS: %s
+PRIMARY: %s
+================================="""%(my_address, str(replicas), primary_replica))
+
+
 storage_dir = './storage'
 
 app = Flask(__name__)
@@ -29,6 +36,10 @@ MAXTRIES = 3
 
 publish_lock = {}
 
+# Load locks
+topic_list = metadata_manager.get_topics()
+for topic in topic_list:
+    publish_lock[topic] = Lock()
 
 # Utility functions
 
