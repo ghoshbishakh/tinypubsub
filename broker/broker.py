@@ -14,14 +14,14 @@ storage_dir = './storage'
 
 app = Flask(__name__)
 
-publish_lock = Lock()
+publish_lock = {}
 
 replicas = ['http://10.5.18.101:9999'] 
 
 # Utility functions
 
 def publish(topic, data):
-    publish_lock.acquire()
+    # publish_lock[topic].acquire()
     # Open index and data files
     index_file = open(os.path.join(storage_dir, topic, 'index.pickle'),'rb+')
     old_index = pickle.load(index_file)
@@ -39,7 +39,7 @@ def publish(topic, data):
     # Close files
     index_file.close()
     data_file.close()
-    publish_lock.release()
+    # publish_lock[topic].release()
 
 
 def read(topic, offset, readall=False):
@@ -90,6 +90,7 @@ def publish_view(topic):
     if not topic in metadata_manager.get_topics():
         return 'Topic not found', 404
 
+    publish_lock[topic].acquire()
     data = json.loads(request.data)
     publish(topic, data)
 
@@ -97,6 +98,7 @@ def publish_view(topic):
         r = requests.post(replica + '/publish_repl/' + topic,data=request.data)
         if r.status_code == 200 :
             print('Publish successful to replica : ' + replica)
+    publish_lock[topic].release()
     return 'Success'
 
 @app.route('/publish_repl/<topic>', methods=['POST'])
@@ -105,7 +107,10 @@ def publish_view_replica(topic):
         return 'Topic not found', 404
 
     data = json.loads(request.data)
+    publish_lock[topic].acquire()
     publish(topic, data)
+    publish_lock[topic].release()
+
     return 'Success'
 
 
@@ -136,6 +141,7 @@ def createtopic_view():
         r = requests.post(replica + '/createtopic_repl' ,data=request.data)
         if r.status_code == 200 :
             print('Topic added successfully to replica : ' + replica)
+    publish_lock[topic_name] = Lock()
     return 'Topic added successfully: ' + topic_name
 
 
