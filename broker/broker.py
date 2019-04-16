@@ -16,10 +16,7 @@ from .config import my_address
 
 replicas.remove(my_address)
 
-if len(replicas):
-    primary_replica = max(replicas)
-else:
-    primary_replica = my_address
+primary_replica = max(replicas + [my_address])
 
 print("""========== TINY PUBSUB ===========
 ADDRESS: %s
@@ -413,10 +410,7 @@ def remove_replica(replica):
     replicas.remove(replica)
 
     old_primary = primary_replica
-    if len(replicas):
-        primary_replica = max(replicas)
-    else:
-        primary_replica = my_address
+    primary_replica = max(replicas + [my_address])
     if primary_replica != old_primary:
         print("PRIMARY CHANGED =========> ", primary_replica)
     replicas_lock.release()
