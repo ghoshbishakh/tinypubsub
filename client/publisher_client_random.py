@@ -3,6 +3,7 @@ import argparse
 from strgen import StringGenerator
 import json
 from time import sleep
+from .config import replicas
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-id','--pub_name',type= str, help='Name of the publisher', required=True)
@@ -22,14 +23,25 @@ def create_topic(topic_name):
     global service_url
     data = {'pub_name':publisher_name,'topic_name':topic_name}
     
-    try:
-        r = requests.post(service_url + '/createtopic', json=data,timeout=10)
-    except:
-        print("Broker unavailable!!")
-        return
+    while True:
+        try:
+            r = requests.post(service_url + '/createtopic', json=data,timeout=3)
+            break
+        except:
+            print("Broker unavailable : " + service_url)
+            if len(replicas) == 1:
+                print("All replicas unreachable!")
+                print("Hoping for " + service_url + " to come up!")
+                return 
+            replicas.remove(service_url)
+            service_url = replicas[0]
+            print("Trying : " + service_url)
+            continue
 
     if len(r.history) > 0:
         service_url = r.history[-1].text
+        if service_url not in replicas:
+            replicas.append(service_url)
 
     if r.status_code == 200 :
         print('Topic successfully created')
@@ -40,14 +52,25 @@ def create_topic(topic_name):
 
 def publish_to_topic(topic_name, msgs):
     global service_url
-    try:
-        r = requests.post(service_url + '/publish/' + topic_name, json=msgs,timeout=10)
-    except:
-        print("Broker unavailable!!")
-        return
+    while True:
+        try:
+            r = requests.post(service_url + '/publish/' + topic_name, json=msgs,timeout=3)
+            break
+        except:
+            print("Broker unavailable : " + service_url)
+            if len(replicas) == 1:
+                print("All replicas unreachable!")
+                print("Hoping for " + service_url + " to come up!")
+                return 
+            replicas.remove(service_url)
+            service_url = replicas[0]
+            print("Trying : " + service_url)
+            continue
 
     if len(r.history) > 0:
         service_url = r.history[-1].text
+        if service_url not in replicas:
+            replicas.append(service_url)
 
     if r.status_code == 200 :
         print('Publish successful')
