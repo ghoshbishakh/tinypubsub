@@ -110,7 +110,7 @@ def index_view():
 def publish_view(topic):
     # Redirect if not primary
     if primary_replica != my_address:
-        return redirect(primary_replica + '/publish/' + topic, code=302)
+        return redirect(primary_replica + '/publish/' + topic, code=307)
 
     # CHECK IF TOPIC EXISTS
     if not topic in metadata_manager.get_topics():
@@ -156,7 +156,7 @@ def publish_view_replica(topic):
 def createtopic_view():
     # Redirect if not primary
     if primary_replica != my_address:
-        return redirect(primary_replica + '/createtopic', code=302)
+        return redirect(primary_replica + '/createtopic', code=307)
 
     try:
         data = json.loads(request.data)
@@ -305,7 +305,7 @@ def read_all_view(topic, offset):
 def subscribe_view():
     # Redirect to primary
     if primary_replica != my_address:
-        return redirect(primary_replica + '/subscribe', code=302)
+        return redirect(primary_replica + '/subscribe', code=307)
 
     # Check POST data
     try:
