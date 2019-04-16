@@ -417,12 +417,51 @@ def remove_replica(replica):
     replicas_lock.acquire()
     if replica in replicas:
         replicas.remove(replica)
-    old_primary = primary_replica
-    primary_replica = max(replicas + [my_address])
-    if primary_replica != old_primary:
-        print("PRIMARY CHANGED =========> ", primary_replica)
     replicas_lock.release()
 
+    old_primary = primary_replica
+    if old_primary != max(replicas + [my_address]):
+        if max(replicas + [my_address]) != my_address:
+            primary_replica = max(replicas + [my_address])
+            print("PRIMARY CHANGED =========> ", primary_replica)
+        elif verify_leader():
+            primary_replica = max(replicas + [my_address])
+            print("PRIMARY CHANGED =========> ", primary_replica)
+
+# asking other replica's permission to become leader  
+def verify_leader():
+    global primary_replica
+
+    data = {'address':my_address}
+    for replica in replicas:
+        tries = 0
+        while tries < MAXTRIES:
+            try:
+                r = requests.post(replica + '/verify', json=data, timeout=1)
+                if r.status_code == 200:
+                    break
+                else:
+                    return False
+            except:
+                tries += 1
+        if tries == MAXTRIES:
+            return False
+
+    return True
+
+@app.route('/verify', methods=['POST'])
+def verify():
+    global primary_replica
+    try:
+        data = json.loads(request.data)
+        replica_name = data['address']
+    except:
+        return 'Invalid POST data', 404
+
+    if primary_replica != replica_name:
+        return 'Fail', 404
+
+    return 'Success', 200
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=heartbeat_exchange, trigger="interval", seconds=3)
