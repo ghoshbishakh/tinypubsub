@@ -2,6 +2,7 @@ import requests
 import argparse
 from strgen import StringGenerator
 import json
+from time import sleep
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-id','--pub_name',type= str, help='Name of the publisher', required=True)
@@ -56,13 +57,12 @@ def publish_to_topic(topic_name, msgs):
 
 def main():
     create_topic('Apache')
-    msgs = StringGenerator('[\\w\\p\\d]{20}').render_list(10,unique=True)
-    publish_to_topic('Apache',msgs)
-    msgs = StringGenerator('[\\w\\p\\d]{20}').render_list(10,unique=True)
-    publish_to_topic('Apache',msgs)
-    # print(msgs)
-    msgs = StringGenerator('[\\w\\p\\d]{20}').render_list(10,unique=True)
-    publish_to_topic('Apache',msgs)
-
-
+    count = 1
+    while(1):
+        msgs = StringGenerator('[\\w\\p\\d]{20}').render_list(10,unique=True)
+        msgs = [publisher_name + "-" + str(count) + ":" + msg for msg in msgs]
+        print(msgs)
+        publish_to_topic('Apache',msgs)
+        count += 1
+        sleep(1)
 main()
