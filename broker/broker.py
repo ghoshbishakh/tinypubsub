@@ -412,6 +412,10 @@ def heartbeat_exchange():
             # MIGHT NEED A LOCK
             remove_replica(replica)
 
+    if primary_replica not in replicas and max(replicas+[my_address])==my_address:
+        if verify_leader():
+            primary_replica = my_address
+
 def remove_replica(replica):
     global primary_replica
     replicas_lock.acquire()
@@ -422,9 +426,6 @@ def remove_replica(replica):
     old_primary = primary_replica
     if old_primary != max(replicas + [my_address]):
         if max(replicas + [my_address]) != my_address:
-            primary_replica = max(replicas + [my_address])
-            print("PRIMARY CHANGED =========> ", primary_replica)
-        elif verify_leader():
             primary_replica = max(replicas + [my_address])
             print("PRIMARY CHANGED =========> ", primary_replica)
 
