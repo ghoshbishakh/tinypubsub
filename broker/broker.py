@@ -376,13 +376,19 @@ def unsubscribe_view(topic):
 def heartbeat_view():
     try:
         data = json.loads(request.data)
-        subscriber_name = data['address']
+        replica_name = data['address']
     except:
         return 'Invalid POST data', 404
-    if subscriber_name not in replicas:
+    if replica_name not in replicas:
         replicas_lock.acquire()
-        replicas.append(subscriber_name)
+        replicas.append(replica_name)
+        # update primary
+        old_primary = primary_replica
+        primary_replica = max(replicas + [my_address])
+        if primary_replica != old_primary:
+            print("PRIMARY CHANGED =========> ", primary_replica)
         replicas_lock.release()
+
     return 'Success', 200
 
 def heartbeat_exchange():
@@ -408,8 +414,8 @@ def heartbeat_exchange():
 def remove_replica(replica):
     global primary_replica
     replicas_lock.acquire()
-    replicas.remove(replica)
-
+    if replica in replicas:
+        replicas.remove(replica)
     old_primary = primary_replica
     primary_replica = max(replicas + [my_address])
     if primary_replica != old_primary:
