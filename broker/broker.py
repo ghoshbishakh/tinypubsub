@@ -374,6 +374,7 @@ def unsubscribe_view(topic):
 
 @app.route('/heartbeat', methods=['POST'])
 def heartbeat_view():
+    global primary_replica
     try:
         data = json.loads(request.data)
         replica_name = data['address']
