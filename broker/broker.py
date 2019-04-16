@@ -219,6 +219,7 @@ def createtopic_view_replica():
         raise
         return 'Topic creation failed', 404
         # TODO remove topic
+    publish_lock[topic_name] = Lock()
     return 'Topic added successfully: ' + topic_name
 
 # Subscriber Endpoints ========================================================================
