@@ -16,10 +16,7 @@ from .config import my_address
 
 replicas.remove(my_address)
 
-if len(replicas):
-    primary_replica = max(replicas)
-else:
-    primary_replica = my_address
+primary_replica = max(replicas + [my_address])
 
 print("""========== TINY PUBSUB ===========
 ADDRESS: %s
@@ -113,7 +110,7 @@ def index_view():
 def publish_view(topic):
     # Redirect if not primary
     if primary_replica != my_address:
-        return redirect(primary_replica + '/publish/' + topic, code=302)
+        return redirect(primary_replica + '/publish/' + topic, code=307)
 
     # CHECK IF TOPIC EXISTS
     if not topic in metadata_manager.get_topics():
@@ -159,7 +156,7 @@ def publish_view_replica(topic):
 def createtopic_view():
     # Redirect if not primary
     if primary_replica != my_address:
-        return redirect(primary_replica + '/createtopic', code=302)
+        return redirect(primary_replica + '/createtopic', code=307)
 
     try:
         data = json.loads(request.data)
@@ -222,6 +219,7 @@ def createtopic_view_replica():
         raise
         return 'Topic creation failed', 404
         # TODO remove topic
+    publish_lock[topic_name] = Lock()
     return 'Topic added successfully: ' + topic_name
 
 # Subscriber Endpoints ========================================================================
@@ -307,7 +305,7 @@ def read_all_view(topic, offset):
 def subscribe_view():
     # Redirect to primary
     if primary_replica != my_address:
-        return redirect(primary_replica + '/subscribe', code=302)
+        return redirect(primary_replica + '/subscribe', code=307)
 
     # Check POST data
     try:
@@ -376,15 +374,22 @@ def unsubscribe_view(topic):
 
 @app.route('/heartbeat', methods=['POST'])
 def heartbeat_view():
+    global primary_replica
     try:
         data = json.loads(request.data)
-        subscriber_name = data['address']
+        replica_name = data['address']
     except:
         return 'Invalid POST data', 404
-    if subscriber_name not in replicas:
+    if replica_name not in replicas:
         replicas_lock.acquire()
-        replicas.append(subscriber_name)
+        replicas.append(replica_name)
+        # update primary
+        old_primary = primary_replica
+        primary_replica = max(replicas + [my_address])
+        if primary_replica != old_primary:
+            print("PRIMARY CHANGED =========> ", primary_replica)
         replicas_lock.release()
+
     return 'Success', 200
 
 def heartbeat_exchange():
@@ -410,13 +415,10 @@ def heartbeat_exchange():
 def remove_replica(replica):
     global primary_replica
     replicas_lock.acquire()
-    replicas.remove(replica)
-
+    if replica in replicas:
+        replicas.remove(replica)
     old_primary = primary_replica
-    if len(replicas):
-        primary_replica = max(replicas)
-    else:
-        primary_replica = my_address
+    primary_replica = max(replicas + [my_address])
     if primary_replica != old_primary:
         print("PRIMARY CHANGED =========> ", primary_replica)
     replicas_lock.release()
