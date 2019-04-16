@@ -111,6 +111,10 @@ def index_view():
 
 @app.route('/publish/<topic>', methods=['POST'])
 def publish_view(topic):
+    # Redirect if not primary
+    if primary_replica != my_address:
+        return redirect(primary_replica + '/publish/' + topic, code=302)
+
     # CHECK IF TOPIC EXISTS
     if not topic in metadata_manager.get_topics():
         return 'Topic not found', 404
@@ -132,9 +136,7 @@ def publish_view(topic):
                 tries += 1
         if tries == MAXTRIES:
             print('Replica at ' + replica + ' is down!!')
-            replicas_lock.acquire()
-            replicas.remove(replica)
-            replicas_lock.release()
+            remove_replica(replica)
 
     publish_lock[topic].release()
     return 'Success'
@@ -155,6 +157,10 @@ def publish_view_replica(topic):
 
 @app.route('/createtopic', methods=['POST'])
 def createtopic_view():
+    # Redirect if not primary
+    if primary_replica != my_address:
+        return redirect(primary_replica + '/createtopic', code=302)
+
     try:
         data = json.loads(request.data)
         publisher_name = data['pub_name']
@@ -188,9 +194,7 @@ def createtopic_view():
                 tries += 1
         if tries == MAXTRIES:
             print('Replica at ' + replica + ' is down!!')
-            replicas_lock.acquire()
-            replicas.remove(replica)
-            replicas_lock.release()
+            remove_replica(replica)
 
     publish_lock[topic_name] = Lock()
     return 'Topic added successfully: ' + topic_name
@@ -301,6 +305,10 @@ def read_all_view(topic, offset):
 
 @app.route('/subscribe', methods=['POST'])
 def subscribe_view():
+    # Redirect to primary
+    if primary_replica != my_address:
+        return redirect(primary_replica + '/subscribe', code=302)
+
     # Check POST data
     try:
         data = json.loads(request.data)
@@ -332,9 +340,7 @@ def subscribe_view():
                 tries += 1
         if tries == MAXTRIES:
             print('Replica at ' + replica + ' is down!!')
-            replicas_lock.acquire()
-            replicas.remove(replica)
-            replicas_lock.release()
+            remove_replica(replica)
     return 'Successfully subscribed', 200    
 
 
@@ -389,7 +395,7 @@ def heartbeat_exchange():
         tries = 0
         while tries < MAXTRIES:
             try:
-                r = requests.post(replica + '/heartbeat',json=data, timeout=3)
+                r = requests.post(replica + '/heartbeat',json=data, timeout=1)
                 if r.status_code == 200:
                     break
             except:
@@ -399,13 +405,22 @@ def heartbeat_exchange():
         if tries == MAXTRIES:
             print('Replica at ' + replica + ' is down!!')
             # MIGHT NEED A LOCK
-            replicas_lock.acquire()
-            replicas.remove(replica)
-            if len(replicas):
-                primary_replica = max(replicas)
-            else:
-                primary_replica = my_address
-            replicas_lock.release()
+            remove_replica(replica)
+
+def remove_replica(replica):
+    global primary_replica
+    replicas_lock.acquire()
+    replicas.remove(replica)
+
+    old_primary = primary_replica
+    if len(replicas):
+        primary_replica = max(replicas)
+    else:
+        primary_replica = my_address
+    if primary_replica != old_primary:
+        print("PRIMARY CHANGED =========> ", primary_replica)
+    replicas_lock.release()
+
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=heartbeat_exchange, trigger="interval", seconds=3)
