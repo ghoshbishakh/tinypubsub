@@ -3,40 +3,47 @@ import argparse
 from strgen import StringGenerator
 import json
 from time import sleep
-from .config import replicas
+from config import replicas
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-id','--pub_name',type= str, help='Name of the publisher', required=True)
-parser.add_argument('-s', '--server',type=str,help='IP address of the pubsub service', default='127.0.0.1')
-parser.add_argument('-p', '--port',type=int,help='port of the pubsub service', default='9999')
+# parser.add_argument('-s', '--server',type=str,help='IP address of the pubsub service', default='127.0.0.1')
+# parser.add_argument('-p', '--port',type=int,help='port of the pubsub service', default='9999')
 
 args = parser.parse_args()
 
 publisher_name = args.pub_name
-service_addr = args.server
-service_port = args.port
-service_url = 'http://' + service_addr + ':' + str(service_port)
+# service_port = args.port
+# service_url = 'http://' + service_addr + ':' + str(service_port)
+service_url = max(replicas)
 # print(args.server)
-
+N = len(replicas)
+i = 0
 
 def create_topic(topic_name):
     global service_url
     data = {'pub_name':publisher_name,'topic_name':topic_name}
-    
+    global N
+    global i
     while True:
         try:
             r = requests.post(service_url + '/createtopic', json=data,timeout=3)
             break
         except:
             print("Broker unavailable : " + service_url)
-            if len(replicas) == 1:
-                print("All replicas unreachable!")
-                print("Hoping for " + service_url + " to come up!")
-                return 
-            replicas.remove(service_url)
-            service_url = replicas[0]
-            print("Trying : " + service_url)
+            i = (i + 1) % N
+            service_url = replicas[i]
+            print("Using node: " + service_url)
+            sleep(1)
             continue
+            # if len(replicas) == 1:
+            #     print("All replicas unreachable!")
+            #     print("Hoping for " + service_url + " to come up!")
+            #     return 
+            # replicas.remove(service_url)
+            # service_url = replicas[0]
+            # print("Trying : " + service_url)
+            # continue
 
     if len(r.history) > 0:
         service_url = r.history[-1].text
@@ -52,19 +59,18 @@ def create_topic(topic_name):
 
 def publish_to_topic(topic_name, msgs):
     global service_url
+    global N
+    global i
     while True:
         try:
             r = requests.post(service_url + '/publish/' + topic_name, json=msgs,timeout=3)
             break
         except:
             print("Broker unavailable : " + service_url)
-            if len(replicas) == 1:
-                print("All replicas unreachable!")
-                print("Hoping for " + service_url + " to come up!")
-                return 
-            replicas.remove(service_url)
-            service_url = replicas[0]
-            print("Trying : " + service_url)
+            i = (i + 1) % N
+            service_url = replicas[i]
+            print("Using node: " + service_url)
+            sleep(1)
             continue
 
     if len(r.history) > 0:
